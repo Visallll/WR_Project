@@ -8,7 +8,7 @@ class NGramModel:
         self.ngrams = defaultdict(Counter)
         self.vocab = set()
 
-    def preprocess(self, text):
+    def preprocess(self, text): 
         text = re.sub(r'\s+', ' ', text.strip())
         tokens = text.split(' ')
         return ['<s>'] * (self.n - 1) + tokens + ['</s>']
@@ -23,7 +23,10 @@ class NGramModel:
                 self.vocab.add(word)
 
     def predict(self, context):
-        context = tuple(context[-(self.n - 1):])
+        needed = self.n - 1
+        if len(context) < needed:
+            context = ['<s>'] * (needed - len(context)) + context
+        context = tuple(context[-needed:])
         return self.ngrams.get(context, Counter())
 
     def perplexity(self, corpus):
@@ -40,7 +43,7 @@ class NGramModel:
                 count = self.ngrams[context][word]
                 total = sum(self.ngrams[context].values())
 
-                prob = (count + 1) / (total + V)
+                prob = (count + 1) / (total + V)  
                 log_prob += math.log(prob)
                 word_count += 1
 
@@ -65,8 +68,8 @@ class NGramModel:
         return correct / total if total > 0 else 0
 
 
-def build_bigram_model(corpus, subset_size=5000):
-    model = NGramModel(n=2)
+def build_ngram_model(corpus, n=2, subset_size=5000):
+    model = NGramModel(n=n)
     model.train(corpus[:subset_size])
     return model
 
@@ -75,10 +78,15 @@ if __name__ == "__main__":
     with open("kh_CC100.txt", "r", encoding="utf-8") as f:
         corpus = f.readlines()
 
-    model = build_bigram_model(corpus)
+    for n in [2, 3]:
+        model = build_ngram_model(corpus, n=n)
+        print(f"\n=== {n}-gram Model ===")
+        print(f"Vocabulary size: {len(model.vocab)}")
+        print(f"Perplexity: {model.perplexity(corpus[:1000]):.4f}")
+        print(f"Accuracy: {model.accuracy(corpus[:1000]):.4f}")
 
-    print("Bigram Perplexity:", model.perplexity(corpus[:1000]))
-    print("Bigram Accuracy:", model.accuracy(corpus[:1000]))
-
-    context = ["សៀវភៅ"]
-    print("Predictions after 'សៀវភៅ':", model.predict(context).most_common(5))
+        context = ["សៀវភៅ"]
+        predictions = model.predict(context).most_common(5)
+        print(f"predictions after '{context[-1]}' ({n}-gram):")
+        for word, score in predictions:
+            print(f"  {word} ({score})")
