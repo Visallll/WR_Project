@@ -7,7 +7,7 @@ This project aims to develop a **Khmer Text Prediction System** that predicts th
 The system investigates both **statistical** and **deep learning** approaches and addresses key challenges in Khmer language processing such as **word spacing ambiguity**, **compound word structures**, and **orthographic variants**.
 
 This project is designed as an **academic / thesis-level project**, combining Natural Language Processing (NLP), Machine Learning, and Deep Learning techniques.
-
+We alos aim to publish the paper regarding this top as well.
 ---
 
 ## 🎯 Objectives
