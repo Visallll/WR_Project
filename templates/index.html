@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+<meta charset="UTF-8">
+<title>Khmer Text Prediction</title>
+
+<style>
+body { font-family: Arial; margin: 40px; }
+input { width: 90%; padding: 12px; font-size: 18px; }
+span {
+    background: #eee;
+    margin: 6px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: inline-block;
+}
+</style>
+</head>
+
+<body>
+<h2>Khmer Text Auto-Suggestion</h2>
+
+<input id="text" placeholder="វាយអក្សរខ្មែរ..." />
+
+<div id="suggestions"></div>
+
+<script>
+async function fetchSuggestions(text) {
+    const res = await fetch("/suggest", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ text: text, top_k: 5 })
+    });
+
+    const data = await res.json();
+    const box = document.getElementById("suggestions");
+    box.innerHTML = "";
+
+    data.suggestions.forEach(s => {
+        const span = document.createElement("span");
+        span.innerText = `${s.word} (${s.confidence})`;
+        span.onclick = () => {
+            document.getElementById("text").value += s.word;
+        };
+        box.appendChild(span);
+    });
+}
+
+document.getElementById("text").addEventListener("input", e => {
+    if (e.target.value.length > 0)
+        fetchSuggestions(e.target.value);
+});
+</script>
+
+</body>
+</html>
