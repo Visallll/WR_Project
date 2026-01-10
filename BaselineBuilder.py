@@ -1,92 +1,80 @@
-import re
 import math
 from collections import defaultdict, Counter
+from WR_Project.utils import load_corpus, char_tokenize, sentence_split
 
 class NGramModel:
-    def __init__(self, n=2):
+    def __init__(self, n):
         self.n = n
         self.ngrams = defaultdict(Counter)
+        self.context_counts = Counter()
         self.vocab = set()
 
-    def preprocess(self, text): 
-        text = re.sub(r'\s+', ' ', text.strip())
-        tokens = text.split(' ')
-        return ['<s>'] * (self.n - 1) + tokens + ['</s>']
-
-    def train(self, corpus):
-        for line in corpus:
-            tokens = self.preprocess(line)
+    def train(self, sentences):
+        for sent in sentences:
+            tokens = ['<s>'] * (self.n - 1) + sent + ['</s>']
             for i in range(len(tokens) - self.n + 1):
-                context = tuple(tokens[i:i + self.n - 1])
-                word = tokens[i + self.n - 1]
-                self.ngrams[context][word] += 1
-                self.vocab.add(word)
+                context = tuple(tokens[i:i+self.n-1])
+                token = tokens[i+self.n-1]
+                self.ngrams[context][token] += 1
+                self.context_counts[context] += 1
+                self.vocab.add(token)
 
-    def predict(self, context):
-        needed = self.n - 1
-        if len(context) < needed:
-            context = ['<s>'] * (needed - len(context)) + context
-        context = tuple(context[-needed:])
-        return self.ngrams.get(context, Counter())
+    def prob(self, token, context):
+        count = self.ngrams[context][token]
+        total = self.context_counts[context]
+        if total == 0:
+            return 0.0   
+        return count / total
 
-    def perplexity(self, corpus):
-        log_prob = 0
-        word_count = 0
-        V = len(self.vocab)
+    def predict(self, context, k=5):
+        context = tuple(context)
+        candidates = self.ngrams[context]
+        return candidates.most_common(k)
 
-        for line in corpus:
-            tokens = self.preprocess(line)
+    def perplexity(self, sentences):
+        log_prob, N = 0, 0
+        for sent in sentences:
+            tokens = ['<s>'] * (self.n - 1) + sent + ['</s>']
             for i in range(len(tokens) - self.n + 1):
-                context = tuple(tokens[i:i + self.n - 1])
-                word = tokens[i + self.n - 1]
+                context = tuple(tokens[i:i+self.n-1])
+                token = tokens[i+self.n-1]
+                p = self.prob(token, context)
+                if p > 0:  
+                    log_prob += math.log(p)
+                    N += 1
+        return math.exp(-log_prob / N) if N > 0 else float("inf")
 
-                count = self.ngrams[context][word]
-                total = sum(self.ngrams[context].values())
-
-                prob = (count + 1) / (total + V)  
-                log_prob += math.log(prob)
-                word_count += 1
-
-        return math.exp(-log_prob / word_count)
-
-    def accuracy(self, corpus):
-        correct = 0
-        total = 0
-
-        for line in corpus:
-            tokens = self.preprocess(line)
+    def top_k_accuracy(self, sentences, k=5):
+        correct, total = 0, 0
+        for sent in sentences:
+            tokens = ['<s>'] * (self.n - 1) + sent + ['</s>']
             for i in range(len(tokens) - self.n + 1):
-                context = tuple(tokens[i:i + self.n - 1])
-                true_word = tokens[i + self.n - 1]
-
-                if context in self.ngrams:
-                    predicted = self.ngrams[context].most_common(1)[0][0]
-                    if predicted == true_word:
-                        correct += 1
-                    total += 1
-
+                context = tokens[i:i+self.n-1]
+                target = tokens[i+self.n-1]
+                preds = [w for w, _ in self.predict(context, k)]
+                if target in preds:
+                    correct += 1
+                total += 1
         return correct / total if total > 0 else 0
 
 
-def build_ngram_model(corpus, n=2, subset_size=5000):
-    model = NGramModel(n=n)
-    model.train(corpus[:subset_size])
-    return model
-
-
 if __name__ == "__main__":
-    with open("kh_CC100.txt", "r", encoding="utf-8") as f:
-        corpus = f.readlines()
+    text = load_corpus("kh_CC100.txt", max_lines=50000)
+    sentences = [char_tokenize(s) for s in sentence_split(text)]
+    sentences = [s for s in sentences if len(s) >= 1]
 
-    for n in [2, 3]:
-        model = build_ngram_model(corpus, n=n)
-        print(f"\n=== {n}-gram Model ===")
-        print(f"Vocabulary size: {len(model.vocab)}")
-        print(f"Perplexity: {model.perplexity(corpus[:1000]):.4f}")
-        print(f"Accuracy: {model.accuracy(corpus[:1000]):.4f}")
+    split = int(0.8 * len(sentences))
+    train, test = sentences[:split], sentences[split:]
 
-        context = ["សៀវភៅ"]
-        predictions = model.predict(context).most_common(5)
-        print(f"predictions after '{context[-1]}' ({n}-gram):")
-        for word, score in predictions:
-            print(f"  {word} ({score})")
+    print("Train:", len(train), "Test:", len(test))
+
+    bigram = NGramModel(2)
+    trigram = NGramModel(3)
+
+    bigram.train(train)
+    trigram.train(train)
+
+    print("Bigram Perplexity:", bigram.perplexity(test))
+    print("Trigram Perplexity:", trigram.perplexity(test))
+    print("Bigram Top 5 Accuracy:", bigram.top_k_accuracy(test))
+    print("Trigram Top 5 Accuracy:", trigram.top_k_accuracy(test))
