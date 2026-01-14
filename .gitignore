@@ -1,0 +1,55 @@
+# Ignore trained models
+/models/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Logs
+*.log
+backend.log
+
+# Virtual environment
+**/*.pth
+**/*.pt
+venv/
+.env
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Jupyter notebooks (optional — if you want to keep them in git, remove this)
+.ipynb_checkpoints/
+notebooks/.ipynb_checkpoints/
+
+# Local configuration files (sensitive data)
+config/local.py
+config/settings_local.py
+*.local.yaml
+*.local.yml
+*.local.json
+
+# SQLite databases (if used)
+*.db
+*.sqlite3
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Python packaging/distribution
+dist/
+build/
+*.egg-info/
