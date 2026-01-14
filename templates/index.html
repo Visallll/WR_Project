@@ -3,34 +3,132 @@
 <head>
 <meta charset="UTF-8">
 <title>Khmer Text Prediction</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-body { font-family: Arial; margin: 40px; }
-input { width: 90%; padding: 12px; font-size: 18px; }
-span {
-    background: #eee;
-    margin: 6px;
-    padding: 8px 12px;
-    border-radius: 8px;
+:root {
+    --bg: #020617;
+    --panel: #020617;
+    --text: #ffffff;
+    --card: #e5e7eb;
+}
+
+.light {
+    --bg: #f8fafc;
+    --panel: #e2e8f0;
+    --text: #020617;
+    --card: #ffffff;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font-family: "Segoe UI", Arial;
+    display: flex;
+    height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+}
+
+/* ===== Fireworks ===== */
+canvas {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+}
+
+/* ===== Sidebar ===== */
+.sidebar {
+    width: 240px;
+    padding: 20px;
+    background: var(--panel);
+}
+
+.sidebar h2 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.toggle {
     cursor: pointer;
-    display: inline-block;
+    padding: 10px;
+    border-radius: 8px;
+    background: #2563eb;
+    text-align: center;
+}
+
+/* ===== Main ===== */
+.main {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+/* ===== Input ===== */
+input {
+    width: 100%;
+    padding: 14px;
+    font-size: 18px;
+    border-radius: 10px;
+    border: none;
+    margin-bottom: 15px;
+}
+
+/* ===== Suggestions ===== */
+.suggestion {
+    background: var(--card);
+    color: #020617;
+    padding: 12px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: transform .15s;
+}
+
+.suggestion:hover {
+    transform: scale(1.03);
+}
+
+/* ===== Mobile ===== */
+@media (max-width: 768px) {
+    body { flex-direction: column; }
+    .sidebar { width: 100%; }
 }
 </style>
 </head>
 
 <body>
-<h2>Khmer Text Auto-Suggestion</h2>
 
-<input id="text" placeholder="វាយអក្សរខ្មែរ..." />
+<canvas id="fireworks"></canvas>
 
-<div id="suggestions"></div>
+<!-- Sidebar -->
+<div class="sidebar">
+    <h2>Khmer NLP</h2>
+    <div class="toggle" onclick="toggleTheme()">🌓 Dark / Light</div>
+</div>
+
+<!-- Main -->
+<div class="main">
+    <h2>Khmer Auto Suggestion</h2>
+
+    <input id="text" placeholder="វាយអក្សរខ្មែរ..." />
+
+    <div id="suggestions"></div>
+</div>
 
 <script>
+/* ===== Theme Toggle ===== */
+function toggleTheme() {
+    document.body.classList.toggle("light");
+}
+
+/* ===== Suggestions ===== */
 async function fetchSuggestions(text) {
-    const res = await fetch("/suggest", {
+    const res = await fetch("/v1/models/xglm-khmer/predict", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ text: text, top_k: 5 })
+        body: JSON.stringify({ text, top_k: 5 })
     });
 
     const data = await res.json();
@@ -38,19 +136,50 @@ async function fetchSuggestions(text) {
     box.innerHTML = "";
 
     data.suggestions.forEach(s => {
-        const span = document.createElement("span");
-        span.innerText = `${s.word} (${s.confidence})`;
-        span.onclick = () => {
+        const div = document.createElement("div");
+        div.className = "suggestion";
+        div.innerText = `${s.word} (${(s.confidence * 100).toFixed(1)}%)`;
+
+        div.onclick = () => {
             document.getElementById("text").value += s.word;
         };
-        box.appendChild(span);
+
+        box.appendChild(div);
     });
 }
 
+/* ===== Auto Completion ===== */
 document.getElementById("text").addEventListener("input", e => {
-    if (e.target.value.length > 0)
+    if (e.target.value.trim().length > 0)
         fetchSuggestions(e.target.value);
 });
+
+/* ===== Fireworks ===== */
+const canvas = document.getElementById("fireworks");
+const ctx = canvas.getContext("2d");
+
+function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+resize();
+window.onresize = resize;
+
+setInterval(() => {
+    ctx.fillStyle = "rgba(0,0,0,0.2)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = `hsl(${Math.random() * 360},100%,60%)`;
+    ctx.beginPath();
+    ctx.arc(
+        Math.random() * canvas.width,
+        Math.random() * canvas.height,
+        2,
+        0,
+        Math.PI * 2
+    );
+    ctx.fill();
+}, 50);
 </script>
 
 </body>
